@@ -25,7 +25,7 @@ class AddCategoryState(StatesGroup):
     add_plan = State()
 
 
-@cat_router.callback_query(F.data == 'settings')
+@cat_router.callback_query(StateFilter('*'), F.data == 'settings')
 async def settings(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     '''Settings menu'''
     if await state.get_state() is not None:
@@ -42,7 +42,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot):
     elif callback_query.data.startswith('conf_exp'):
         cat_type = 2
 
-    keyboard = await kb.get_cat_list(cat_type)
+    keyboard = await kb.get_cat_list(table_num=cat_type)
 
     text = 'Выберите источник доходов 📈' if cat_type == 1 else 'Выберите категорию расходов 📉'
 
@@ -101,14 +101,15 @@ async def change_inc_name(message: Message, state: FSMContext):
 ########################### FSM for adding new category ###########################
 
 
-@cat_router.callback_query(F.data.startswith('add_cat'))
+@cat_router.callback_query(F.data.startswith('add_cat_exp') | F.data.startswith('add_cat_inc'))
 async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMContext):
-    cat_type = 1 if callback_query.data == 'add_inc' else 2
+    print(callback_query.data)
+    cat_type = 1 if callback_query.data == 'add_cat_inc' else 2
 
     text = 'Введите название новой категории доходов 📈' if cat_type == 1 else 'Введите название новой категории расходов 📉'
 
     await callback_query.answer()
-    await callback_query.message.answer(text=text, reply_markup=kb.get_callback_btns(btns={'🔙 Назад': 'settings'}))
+    await callback_query.message.answer(text=text, reply_markup=kb.get_callback_btns(btns={'🚫 Cancel': 'settings'}))
     await state.update_data(cat_type=cat_type)
     await state.set_state(AddCategoryState.add_name)
 
@@ -131,10 +132,9 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
 
 @cat_router.message(AddCategoryState.add_name)
 async def add_cat_name(message: Message, state: FSMContext):
-    data = await state.get_data()
     await state.update_data(name=message.text)
     await state.set_state(AddCategoryState.add_plan)
-    await message.answer('Введите плановую сумму', reply_markup=kb.get_callback_btns(btns={'🔙 Назад': 'settings'}))
+    await message.answer('Введите плановую сумму', reply_markup=kb.get_callback_btns(btns={'🚫 Cancel': 'settings'}))
 
 
 @cat_router.message(AddCategoryState.add_plan)
@@ -142,5 +142,5 @@ async def add_cat_plan(message: Message, state: FSMContext):
     data = await state.get_data()
     await add_cat(data['cat_type'], data['name'], int(message.text))
     await state.clear()
-    await message.edit_reply_markup('Категория добавлена', reply_markup=kb.get_callback_btns(btns={'🔙 Назад': 'settings',
-                                                                                        'Главное меню': 'start'}))
+    await (message.answer('Категория добавлена', reply_markup=kb.get_callback_btns(btns={'🔙 Назад': 'settings',
+                                                                                        'Главное меню': 'start'})))
