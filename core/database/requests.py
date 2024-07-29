@@ -1,10 +1,10 @@
-from .models import User, ExpCategory, IncCategory, Expense, Income
-from .engine import async_session
+import logging
 
 from sqlalchemy import select, update, delete, insert
 
-import logging
-import json
+from .models import User, ExpCategory, IncCategory, Expense, Income
+from .engine import async_session
+
 
 logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -91,7 +91,7 @@ async def add_note(cat_type: int, cat_id: int, amount: int, description: str):
             table = Income
         else:
             table = Expense
-        session.add(table(category_id=cat_id, amount=amount, description=description))
+        session.add(table(category_id=cat_id, amount=str(amount), description=description))
         await session.commit()
 
 

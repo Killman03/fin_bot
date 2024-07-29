@@ -9,7 +9,6 @@ from aiogram.client.default import DefaultBotProperties
 from core.database.engine import create_db, drop_db
 from core.handlers.basic import *
 from core.handlers.commands import set_commands
-from core.database.models import async_main
 from core.handlers import router as main_router
 
 from dotenv import load_dotenv
@@ -28,8 +27,6 @@ async def on_shutdown(bot: Bot):
 
 async def start():
     load_dotenv()
-
-    await async_main()
 
     bot = Bot(
         token=os.getenv("BOT_TOKEN"),

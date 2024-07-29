@@ -118,7 +118,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMConte
 # после того, как только встали в состояние номер 1 (элементарная очередность фильтров)
 @cat_router.message(StateFilter("*"), Command("отмена"))
 @cat_router.message(StateFilter("*"), F.text.casefold() == "отмена")
-@cat_router.callback_query(StateFilter("*"), F.data.casefold() == "отмена")
+@cat_router.callback_query(StateFilter("*"), F.data == "cancel")
 async def cancel_handler(message: Message, state: FSMContext) -> None:
     current_state = await state.get_state()
     if current_state is None:

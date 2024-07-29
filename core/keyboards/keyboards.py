@@ -29,15 +29,16 @@ async def get_cat_list(table_num: int):
 async def get_add_note_kb(table_num: int = 2):
     items = await get_all_notes(table_num)
     keyboard = InlineKeyboardBuilder()
-    callback_prefix = 'inc_add' if table_num == 1 else 'exp_add'
+    callback_prefix = 'add_inc' if table_num == 1 else 'add_exp'
     to_anthr = 'to_inc' if table_num == 2 else 'to_exp'
 
     for item in items:
-        print(f'{callback_prefix}_{item.id}')
         keyboard.add(InlineKeyboardButton(text=item.name, callback_data=f'{callback_prefix}_{item.id}'))
     if table_num == 2:
         keyboard.add(InlineKeyboardButton(text='📈⬅️ К доходам', callback_data=to_anthr))
     else:
         keyboard.add(InlineKeyboardButton(text='📉⬅️ К расходам', callback_data=to_anthr))
+
+    keyboard.add(InlineKeyboardButton(text='🚫 Отмена', callback_data=f'cancel'))
 
     return keyboard.adjust(1).as_markup()
