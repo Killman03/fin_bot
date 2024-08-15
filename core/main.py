@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 async def on_startup(bot: Bot):
     await set_commands(bot)
-    #await drop_db()
+    # await drop_db()
     await create_db()
     await bot.send_message(os.getenv('ADMIN_ID'), text='Bot is running')
 
@@ -42,9 +42,10 @@ async def start():
     finally:
         await bot.session.close()
 
+
 if __name__ == '__main__':
     try:
-        logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+        logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
         asyncio.run(start())
     except KeyboardInterrupt:
         print('Bot stopped')

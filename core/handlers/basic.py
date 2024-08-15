@@ -1,6 +1,13 @@
+import os
+
 from aiogram import Bot, Router, F
-from aiogram.types import CallbackQuery
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.state import StatesGroup, State
+
+from core.keyboards.keyboards import get_callback_btns, get_start_kb
+from core.utils.to_excel import export_to_xlsx
 
 my_router = Router(name=__name__)
 
@@ -10,34 +17,36 @@ class SetCat(StatesGroup):
     expenses = State()
 
 
+@my_router.callback_query(F.data == "cancel", StateFilter('*'))
+async def cancel_handler(callback_query: CallbackQuery, state:FSMContext) -> None:
+    current_state = await state.get_state()
+    await state.clear()
+    await callback_query.answer("Действия отменены", show_alert=True)
+
+    text = f'Привет, {callback_query.from_user.first_name}! 👋 Для того, чтобы добавить источник доходов или расходов, ' \
+           f'перейди в настройки ⚙️. Давай вместе придем к финансовой независимости! 💰💼'
+
+    await callback_query.message.edit_text(text=text, reply_markup=await get_start_kb())
+
+
 @my_router.callback_query(F.data == 'info')
 async def info(callback_query: CallbackQuery, bot: Bot):
     text = 'ℹ️ Чтобы добавить сведения о доходах или расходах,' \
             ' введите число или математическое выражение, например, ' \
             '26*4 или 236+189.\nМожно также направить фотографию '\
-            'QR-кода на чеке. Бот сам распределит позиции в чеке так,'\
-            ' как Вы его научите.\n\nЧтобы вывести отчет, введите '\
-            'команду /report.\nДля произвольного периода используйте '\
-            'формат /report_01072019_30092019.\n\nДля отображения в '\
-            'отчете информации об остатке средств на начало и конец '\
-            'периода, введите команду /saldo и укажите текущий остаток.'\
-            '\nДля удаления информации об остатке средств используйте '\
-            'команду /deletesaldo.'
-    await bot.send_message(callback_query.from_user.id, text=text)
-
-# @my_router.message(SetCat.incomes)
-# async def set_exp(message: Message, state: FSMContext):
-#     await state.update_data(incomes=message.text)
-#     await state.set_state(SetCat.expenses)
-#     await message.answer('✅ Источники доходов установлены. Теперь введите названия категорий расходов. Например:\n\n🍌 Категория 1 - 3900\n👚 Категория 2 - 50000\n🌿 Прочее\n\nP.S.: названия категорий расходов и плановые суммы можно будет изменить.')
-#
-#
-# @my_router.message(SetCat.expenses)
-# async def set_exp(message: Message, state: FSMContext):
-#     await state.update_data(expends=message.text)
-#     await add_fsm_data(state)
-#     await state.clear()
-#     await message.answer('👍 Всё готово!\nТеперь просто вводите числа или математические выражения, например, 26*4 или 236+189.\nМожно также направлять фотографии QR-кодов на чеках. Бот сам распределит позиции в чеке так, как Вы его научите.\n\nЧтобы вывести отчет, введите команду /report.\nДля произвольного периода используйте формат /report_01072019_30092019.\nДля отображения в отчете информации об остатке средств на начало и конец периода, введите команду /saldo и укажите текущий остаток.')
+            'QR-кода на чеке. \n\nЧтобы вывести отчет, введите '\
+            'команду /report.'
+    await bot.send_message(callback_query.from_user.id, text=text, reply_markup=get_callback_btns(btns={'🔙 Назад': 'delete_info'}))
 
 
+@my_router.callback_query(F.data == 'delete_info')
+async def delete_info(callback_query: CallbackQuery, bot: Bot):
+    await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)
 
+
+@my_router.callback_query(F.data == 'excel')
+async def send_xl(callback_query: CallbackQuery):
+    await export_to_xlsx()
+    file_path = 'documents/budget.xlsx'
+    await callback_query.message.reply_document(document=FSInputFile(path=file_path))
+    os.remove('documents/budget.xlsx')

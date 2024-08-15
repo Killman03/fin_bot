@@ -1,15 +1,26 @@
+# Define the list of imported modules
 __all__ = ['router']
 
+# Import the necessary modules
 from aiogram import Router
 
-from core.handlers.basic import my_router
-from core.handlers.categories_hd import cat_router
-from core.handlers.start_hd import start_router
-from core.handlers.add_hd import add_router
+# Import handlers from different modules
+from core.handlers import (
+    basic,
+    categories_hd,
+    start_hd,
+    add_hd,
+    scan_hd,
+    report_hd
+)
 
+# Create a new router instance
 router = Router()
 
-router.include_router(my_router)
-router.include_router(cat_router)
-router.include_router(start_router)
-router.include_router(add_router)
+# Include routers from different handlers
+router.include_router(scan_hd.scan_router)
+router.include_router(basic.my_router)
+router.include_router(categories_hd.cat_router)
+router.include_router(start_hd.start_router)
+router.include_router(add_hd.add_router)
+router.include_router(report_hd.report_router)

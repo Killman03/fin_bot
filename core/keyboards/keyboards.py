@@ -1,6 +1,8 @@
+import datetime
+
 from aiogram.utils.keyboard import InlineKeyboardButton, InlineKeyboardBuilder
 
-from core.database.requests import get_all_notes
+from core.database.requests import get_all_notes, get_cat_info
 
 
 def get_callback_btns(*, btns: dict[str, str], size: tuple[int] = (2, )):
@@ -39,6 +41,42 @@ async def get_add_note_kb(table_num: int = 2):
     else:
         keyboard.add(InlineKeyboardButton(text='📉⬅️ К расходам', callback_data=to_anthr))
 
-    keyboard.add(InlineKeyboardButton(text='🚫 Отмена', callback_data=f'cancel'))
+    keyboard.add(InlineKeyboardButton(text='🚫 Отмена', callback_data='cancel'))
 
     return keyboard.adjust(1).as_markup()
+
+
+async def get_note_kb():
+    btns = {
+        '📆 Уточнить дату': 'date',
+        '📝 Комментарий': 'comment',
+        '🗑 Удалить': 'delete-note',
+        '🏠 Домой': 'start',
+    }
+
+    return get_callback_btns(btns=btns)
+
+
+async def get_scan_kb():
+    items = await get_all_notes(table_num=2)
+    keyboard = InlineKeyboardBuilder()
+    callback_prefix = 'qr'
+    for item in items:
+        keyboard.add(InlineKeyboardButton(text=item.name, callback_data=f'{callback_prefix}_{item.id}'))
+
+    keyboard.add(InlineKeyboardButton(text='🚫 Отмена', callback_data='cancel'))
+
+    return keyboard.adjust(1).as_markup()
+
+
+async def get_start_kb():
+    current_date = datetime.datetime.now().strftime('%B %Y')
+
+    btns = {
+        'Отчет': f'report_prev_{current_date}_1',
+        'Настройки': 'settings',
+        'Excel': 'excel',
+        'Информация': 'info',
+    }
+
+    return get_callback_btns(btns=btns)

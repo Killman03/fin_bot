@@ -7,16 +7,17 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import StateFilter
 
-from core.keyboards.keyboards import get_add_note_kb, get_callback_btns
+from core.keyboards.keyboards import get_add_note_kb, get_callback_btns, get_note_kb
 from core.utils.arif import resolve
-from core.database.requests import add_note, get_cat_info
+from core.utils.correct_date import is_valid_date
+from core.database.requests import add_note, get_cat_info, get_created_date, change_date, delete_note, add_comment
 from core.filters.noletter_ft import NoLettersFilter
 
 add_router = Router()
 
 
 class AddNote(StatesGroup):
-    note = State()
+    comment = State()
 
 
 locale.setlocale(
@@ -48,32 +49,35 @@ async def arif_hd_callback(callback_query: CallbackQuery, bot: Bot, state: FSMCo
                                 text=f'❔ В какую категорию добавить {msg} ₽?', reply_markup=kbrd)
 
 
+################################## FSM for edit notes ##################################
+
+
 @add_router.callback_query(StateFilter(None), F.data.startswith('add_exp') | F.data.startswith('add_inc'))
 async def add_note_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
-    btns = {
-        '📆 Уточнить дату': 'date',
-        '📝 Комментарий': 'comment',
-        '🗑 Удалить': 'delete_note',
-        '🏠 Домой': 'start',
-    }
-    data = await state.get_data()
-    msg = data['amount']
-    cat_id = int(callback_query.data.split('_')[2])
-    date = datetime.datetime.now().strftime('%d.%B.%Y')
-    await state.update_data(cat_id=cat_id, date=date)
 
-    if callback_query.data.startswith('inc_add_'):
+    data = await state.get_data()
+    amount = data['amount']
+    cat_id = int(callback_query.data.split('_')[2])
+
+    if callback_query.data.startswith('add_inc_'):
         cat_name = await get_cat_info(cat_id=int(callback_query.data.split('_')[2]), cat_type=1)
-        await add_note(cat_type=1, cat_id=cat_id, amount=int(msg), description='')
-        text = f'Добавлено {msg} ₽ в источник доходов {cat_name.name}.\n{date}'
+        prod_id = await add_note(cat_type=1, cat_id=cat_id, amount=int(amount), description='')
+        date = await get_created_date(cat_type=1, prod_id=prod_id)
+        await state.update_data(prod_id=prod_id, date=date, cat_type=1, cat_name=cat_name.name)
 
     else:
         cat_name = await get_cat_info(cat_id=int(callback_query.data.split('_')[2]), cat_type=2)
-        await add_note(cat_type=2, cat_id=cat_id, amount=int(msg), description='')
-        text = f'Добавлено {msg} ₽ в категорию расходов {cat_name.name}.\n{date}'
+        prod_id = await add_note(cat_type=2, cat_id=cat_id, amount=int(amount), description='')
+        date = await get_created_date(cat_type=2, prod_id=prod_id)
+        await state.update_data(prod_id=prod_id, date=date, cat_type=2, cat_name=cat_name.name)
 
-    await bot.edit_message_text(text=text, chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
-                           reply_markup=get_callback_btns(btns=btns))
+    text = f'Добавлено {amount} ₽ в категорию расходов "{cat_name.name}".\n{date}'
+
+    await bot.edit_message_text(text=text, chat_id=callback_query.from_user.id,
+                                message_id=callback_query.message.message_id,
+                                reply_markup=await get_note_kb())
+
+############################# Change date ##################################
 
 
 @add_router.callback_query(F.data == 'date')
@@ -93,23 +97,23 @@ async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMConte
 
 
 @add_router.callback_query(F.data.in_(['day', 'month', 'year']))
-async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+async def date_callback(callback_query: CallbackQuery, bot: Bot):
     months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
               'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
     if callback_query.data == 'day':
-        for i in range(1, 32):
-        btns = {str(i): f'day_{1}' for i in range(1, 32)}
+        btns = {str(i): f'day_{i}' for i in range(1, 32)}
         btns['<< Назад'] = 'date'
         kbrd = get_callback_btns(btns=btns, size=(7,))
-        await state.update_data(day=i-1)
+
     elif callback_query.data == 'month':
         btns = {str(i): f'month_{i}' for i in months}
         btns['<< Назад'] = 'date'
         kbrd = get_callback_btns(btns=btns, size=(4,))
+
     elif callback_query.data == 'year':
         year_now = datetime.datetime.now().year
-        btns = {str(i): f'year_{i}' for i in range(year_now-7, year_now + 1)}
+        btns = {str(i): f'year_{i}' for i in range(year_now - 7, year_now + 1)}
         btns['<< Назад'] = 'date'
         kbrd = get_callback_btns(btns=btns, size=(4,))
 
@@ -117,8 +121,75 @@ async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMConte
                                         message_id=callback_query.message.message_id, reply_markup=kbrd)
 
 
-@add_router.callback_query(F.data == 'done')
-async def done_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+@add_router.callback_query(F.data.startswith('day_') | F.data.startswith('month_') | F.data.startswith('year_'))
+async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+    date = await state.get_data()
+    date = date['date']
+    date = date.split('.')
+    if callback_query.data.startswith('day_'):
+        date[0] = callback_query.data.split('_')[1]
+    elif callback_query.data.startswith('month_'):
+        date[1] = callback_query.data.split('_')[1]
+    elif callback_query.data.startswith('year_'):
+        date[2] = callback_query.data.split('_')[1]
+    date = '.'.join(date)
+    await state.update_data(date=date)
+    date = date.split('.')
+
+    btns = {
+        f'{date[0]}': 'day',
+        f'{date[1]}': 'month',
+        f'{date[2]}': 'year',
+        '✔️ Готово': 'done'
+    }
+    kbrd = get_callback_btns(btns=btns, size=(3,))
     await bot.edit_message_reply_markup(chat_id=callback_query.from_user.id,
-                                        message_id=callback_query.message.message_id, reply_markup=None)
-    await bot.send_message(chat_id=callback_query.from_user.id, text='Дата добавлена')
+                                        message_id=callback_query.message.message_id, reply_markup=kbrd)
+
+
+@add_router.callback_query(F.data == 'done')
+async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+    MONTH_NAMES = {
+        'Январь': 1, 'Февраль': 2, 'Март': 3, 'Апрель': 4, 'Май': 5, 'Июнь': 6,
+        'Июль': 7, 'Август': 8, 'Сентябрь': 9, 'Октябрь': 10, 'Ноябрь': 11, 'Декабрь': 12
+    }
+
+    data = await state.get_data()
+    date = data['date']
+    date = date.split('.')
+    date = datetime.datetime(int(date[2]), MONTH_NAMES[date[1]], int(date[0]))
+    cat_type = await state.get_data()
+    await change_date(date=str(date), cat_type=cat_type['cat_type'], prod_id=data['prod_id'])
+    fsm_data = await state.get_data()
+    fsm_data['date'] = date.strftime("%d.%B.%Y")
+    text = f'Добавлено {fsm_data['amount']} ₽ в категорию расходов "{fsm_data['cat_name']}".\n{date.strftime('%d.%B.%Y')}'
+    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
+                                text=text, reply_markup=await get_note_kb())
+
+
+##################### delete note #####################
+
+
+@add_router.callback_query(F.data == 'delete-note')
+async def delete_note_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+    data = await state.get_data()
+    await delete_note(cat_type=data['cat_type'], prod_id=data['prod_id'])
+    await bot.delete_message(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id)
+    await callback_query.message.answer('Запись удалена')
+
+############################ FSM for comment ############################
+
+
+@add_router.callback_query(F.data == 'comment')
+async def comment_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text='Введите комментарий')
+    await state.set_state(AddNote.comment)
+
+
+@add_router.message(AddNote.comment)
+async def comment_callback(message: Message, bot: Bot, state: FSMContext):
+    fsm_data = await state.get_data()
+    await add_comment(cat_type=fsm_data['cat_type'], prod_id=fsm_data['prod_id'], comment=message.text)
+
+    text = f'Добавлено {fsm_data['amount']} ₽ в категорию расходов "{fsm_data['cat_name']}".\n{fsm_data['date']}\n "_{message.text}_"'
+    await message.answer(text=text, reply_markup=await get_note_kb(), parse_mode='Markdown')

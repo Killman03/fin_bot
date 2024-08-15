@@ -2,7 +2,7 @@ from aiogram import Router, Bot, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import StateFilter
 
 import core.keyboards.keyboards as kb
 from core.database.requests import (
@@ -58,6 +58,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot, state
     btns = {
         '✏️Переименовать': f'rename_{cat_type}_{cat_id}',
         'Удалить': f'delete_{cat_type}_{cat_id}',
+        'Удалить': f'delete_{cat_type}_{cat_id}',
         '⬆️Поднять в списке': f'up_{cat_type}_{cat_id}',
         '⬇️Опустить в списке': f'down_{cat_type}_{cat_id}',
         '🔙Назад': 'conf_inc' if cat_type == 1 else 'conf_exp'
@@ -103,7 +104,6 @@ async def change_inc_name(message: Message, state: FSMContext):
 
 @cat_router.callback_query(F.data.startswith('add_cat_exp') | F.data.startswith('add_cat_inc'))
 async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMContext):
-    print(callback_query.data)
     cat_type = 1 if callback_query.data == 'add_cat_inc' else 2
 
     text = 'Введите название новой категории доходов 📈' if cat_type == 1 else 'Введите название новой категории расходов 📉'
@@ -112,22 +112,6 @@ async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMConte
     await callback_query.message.answer(text=text, reply_markup=kb.get_callback_btns(btns={'🚫 Cancel': 'settings'}))
     await state.update_data(cat_type=cat_type)
     await state.set_state(AddCategoryState.add_name)
-
-
-# Хендлер отмены и сброса состояния должен быть всегда именно здесь,
-# после того, как только встали в состояние номер 1 (элементарная очередность фильтров)
-@cat_router.message(StateFilter("*"), Command("отмена"))
-@cat_router.message(StateFilter("*"), F.text.casefold() == "отмена")
-@cat_router.callback_query(StateFilter("*"), F.data == "cancel")
-async def cancel_handler(message: Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-    else:
-        current_state = None
-    await state.clear()
-    await message.answer("Действия отменены")
-    await message.answer('Главное меню', reply_markup=kb.get_callback_btns(btns={'🏠Главное меню': 'start'}))
 
 
 @cat_router.message(AddCategoryState.add_name)
