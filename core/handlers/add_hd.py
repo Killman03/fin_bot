@@ -187,9 +187,12 @@ async def comment_callback(callback_query: CallbackQuery, bot: Bot, state: FSMCo
 
 
 @add_router.message(AddNote.comment)
-async def comment_callback(message: Message, bot: Bot, state: FSMContext):
+async def comment_callback(message: Message, state: FSMContext):
     fsm_data = await state.get_data()
     await add_comment(cat_type=fsm_data['cat_type'], prod_id=fsm_data['prod_id'], comment=message.text)
+    amount = fsm_data['amount']
+    cat_name = fsm_data['cat_name']
+    date = fsm_data['date']
 
-    text = f'Добавлено {fsm_data['amount']} ₽ в категорию расходов "{fsm_data['cat_name']}".\n{fsm_data['date']}\n "_{message.text}_"'
+    text = f'Добавлено {amount} ₽ в категорию расходов "{cat_name}".\n{date}\n "_{message.text}_"'
     await message.answer(text=text, reply_markup=await get_note_kb(), parse_mode='Markdown')
