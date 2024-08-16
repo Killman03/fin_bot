@@ -2,8 +2,8 @@ from aiogram import Bot, Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
-from core.database.requests import set_user
-from core.keyboards.keyboards import get_start_kb
+from database.requests import set_user
+from keyboards.keyboards import get_start_kb
 
 
 start_router = Router()

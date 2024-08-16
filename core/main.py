@@ -5,18 +5,18 @@ import sys
 
 from aiogram import Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv())
 
-from core.database.engine import create_db, drop_db
-from core.handlers.basic import *
-from core.handlers.commands import set_commands
-from core.handlers import router as main_router
-
-from dotenv import load_dotenv
+from database.engine import create_db, drop_db
+from handlers.basic import *
+from handlers.commands import set_commands
+from handlers import router as main_router
 
 
 async def on_startup(bot: Bot):
     await set_commands(bot)
-    # await drop_db()
+    #await drop_db()
     await create_db()
     await bot.send_message(os.getenv('ADMIN_ID'), text='Bot is running')
 

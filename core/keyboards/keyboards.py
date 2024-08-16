@@ -2,7 +2,7 @@ import datetime
 
 from aiogram.utils.keyboard import InlineKeyboardButton, InlineKeyboardBuilder
 
-from core.database.requests import get_all_notes, get_cat_info
+from database.requests import get_all_notes, get_cat_info
 
 
 def get_callback_btns(*, btns: dict[str, str], size: tuple[int] = (2, )):

@@ -1,7 +1,7 @@
 # from aiogram import BaseMiddleware
 # from aiogram.types import TelegramObject
 # from typing import Any, Awaitable, Callable, Dict
-# from core.database.models import FinBD
+# from database.models import FinBD
 # import asyncpg
 #
 #

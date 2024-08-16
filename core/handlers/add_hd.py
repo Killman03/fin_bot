@@ -7,11 +7,11 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import StateFilter
 
-from core.keyboards.keyboards import get_add_note_kb, get_callback_btns, get_note_kb
-from core.utils.arif import resolve
-from core.utils.correct_date import is_valid_date
-from core.database.requests import add_note, get_cat_info, get_created_date, change_date, delete_note, add_comment
-from core.filters.noletter_ft import NoLettersFilter
+from keyboards.keyboards import get_add_note_kb, get_callback_btns, get_note_kb
+from utils.arif import resolve
+from utils.correct_date import is_valid_date
+from database.requests import add_note, get_cat_info, get_created_date, change_date, delete_note, add_comment
+from filters.noletter_ft import NoLettersFilter
 
 add_router = Router()
 

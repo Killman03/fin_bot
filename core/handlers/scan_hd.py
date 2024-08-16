@@ -1,14 +1,15 @@
 import os
 from datetime import datetime
+import pprint
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery, Message
 from aiogram import Router, Bot, F
 
-from core.utils.scan import scan_qr_code, process_receipt, TEST_DATA
-from core.database.requests import add_note, check_description_exists
-from core.keyboards.keyboards import get_scan_kb, get_start_kb
+from utils.scan import scan_qr_code, process_receipt, TEST_DATA
+from database.requests import add_note, check_description_exists
+from keyboards.keyboards import get_scan_kb, get_start_kb
 
 scan_router = Router()
 
@@ -51,8 +52,6 @@ async def handle_receipt(message: Message, bot: Bot, state: FSMContext):
                                created=dt)
                 count += 1
                 continue
-                #await state.update_data(amount=price, name=name, count=1, cat_id=cat_id)
-                #await state.set_state(ScanState.wait_category)
 
             else:
                 await message.answer(text=f'К какой категории привязать "{name}" с стоимостью {price}?',
@@ -61,6 +60,7 @@ async def handle_receipt(message: Message, bot: Bot, state: FSMContext):
                 await state.set_state(ScanState.wait_category)
                 break
 
+
     except Exception as e:
         print(f"Error: {e}")
 
@@ -68,12 +68,7 @@ async def handle_receipt(message: Message, bot: Bot, state: FSMContext):
 @scan_router.message(ScanState.wait_category)
 @scan_router.callback_query(F.data.startswith('qr_'))
 async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
-    if callback_query.data.startswith('qr_'):
-        cat_id = callback_query.data.split('_')[-1]
-
-    else:
-        data = await state.get_data()
-        cat_id = data['cat_id']
+    cat_id = callback_query.data.split('_')[-1]
 
     data = await state.get_data()
 
@@ -89,10 +84,10 @@ async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
                 d = prod_list[count]
                 price = d['sum'] / 100
                 name = d['name']
+                category_id = await check_description_exists(name)
 
-                if cat_id is not False:
-                    cat_id = await check_description_exists(name)
-                    await add_note(cat_type=2, cat_id=int(cat_id), amount=price, description=name,
+                if category_id is not False:
+                    await add_note(cat_type=2, cat_id=int(category_id), amount=price, description=name,
                                    created=dt)
                     count += 1
                     continue
@@ -105,6 +100,8 @@ async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
                                                 message_id=callback_query.message.message_id,
                                                 text=f'К какой категории привязать "{name}" стоимостью {price}?',
                                                 reply_markup=kbrd)
+                    await state.set_state(ScanState.wait_category)
+                    break
 
             elif count == len(list(prod_list)):
                 kbrd = await get_start_kb()

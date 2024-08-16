@@ -5,14 +5,7 @@ __all__ = ['router']
 from aiogram import Router
 
 # Import handlers from different modules
-from core.handlers import (
-    basic,
-    categories_hd,
-    start_hd,
-    add_hd,
-    scan_hd,
-    report_hd
-)
+from handlers import add_hd, basic, categories_hd, scan_hd, start_hd, report_hd
 
 # Create a new router instance
 router = Router()

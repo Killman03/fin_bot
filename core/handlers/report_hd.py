@@ -4,8 +4,8 @@ from aiogram import Bot, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
-from core.keyboards.keyboards import get_callback_btns
-from core.database.requests import get_monthly_report
+from keyboards.keyboards import get_callback_btns
+from database.requests import get_monthly_report
 
 
 report_router = Router()

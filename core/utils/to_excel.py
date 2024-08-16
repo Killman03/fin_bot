@@ -1,6 +1,6 @@
 from openpyxl import Workbook
 
-from core.database.requests import get_note_info, get_all_notes
+from database.requests import get_note_info, get_all_notes
 
 
 # Определение функции для экспорта данных в XLSX

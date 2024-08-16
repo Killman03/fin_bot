@@ -6,8 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.fsm.state import StatesGroup, State
 
-from core.keyboards.keyboards import get_callback_btns, get_start_kb
-from core.utils.to_excel import export_to_xlsx
+from keyboards.keyboards import get_callback_btns, get_start_kb
+from utils.to_excel import export_to_xlsx
 
 my_router = Router(name=__name__)
 

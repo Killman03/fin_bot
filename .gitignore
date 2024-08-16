@@ -1,2 +1,5 @@
 ./core/config.py
 .env
+.vscode
+.idea
+__pychache__/

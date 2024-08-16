@@ -4,8 +4,8 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import StateFilter
 
-import core.keyboards.keyboards as kb
-from core.database.requests import (
+import keyboards.keyboards as kb
+from database.requests import (
     get_cat_info,
     delete_cat,
     add_cat,
