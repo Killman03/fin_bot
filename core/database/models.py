@@ -42,7 +42,7 @@ class Income(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     amount: Mapped[str] = mapped_column(String(10))
     description: Mapped[int] = mapped_column(String(255), nullable=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey('inc_categories.id'))
+    category_id: Mapped[int] = mapped_column(ForeignKey('inc_categories.id', ondelete='CASCADE'))
 
 
 class Expense(Base):
@@ -51,7 +51,7 @@ class Expense(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     amount: Mapped[str] = mapped_column(String(10))
     description: Mapped[int] = mapped_column(String(255), nullable=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey('exp_categories.id'))
+    category_id: Mapped[int] = mapped_column(ForeignKey('exp_categories.id', ondelete='CASCADE'))
 
 
 User.inc_categories = relationship("IncCategory", back_populates="user")

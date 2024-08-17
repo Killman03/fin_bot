@@ -9,7 +9,6 @@ from aiogram.filters import StateFilter
 
 from keyboards.keyboards import get_add_note_kb, get_callback_btns, get_note_kb
 from utils.arif import resolve
-from utils.correct_date import is_valid_date
 from database.requests import add_note, get_cat_info, get_created_date, change_date, delete_note, add_comment
 from filters.noletter_ft import NoLettersFilter
 
@@ -22,7 +21,7 @@ class AddNote(StatesGroup):
 
 locale.setlocale(
     category=locale.LC_ALL,
-    locale="Russian"  # Note: do not use "de_DE" as it doesn't work
+    locale="ru_RU.UTF-8"  # change from Russian
 )
 
 
@@ -162,7 +161,10 @@ async def date_callback(callback_query: CallbackQuery, bot: Bot, state: FSMConte
     await change_date(date=str(date), cat_type=cat_type['cat_type'], prod_id=data['prod_id'])
     fsm_data = await state.get_data()
     fsm_data['date'] = date.strftime("%d.%B.%Y")
-    text = f'Добавлено {fsm_data['amount']} ₽ в категорию расходов "{fsm_data['cat_name']}".\n{date.strftime('%d.%B.%Y')}'
+    amount = fsm_data['amount']
+    cat_name = fsm_data['cat_name']
+    data = date.strftime('%d.%B.%Y')
+    text = f'Добавлено {amount} ₽ в категорию расходов "{cat_name}".\n{data}'
     await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
                                 text=text, reply_markup=await get_note_kb())
 
@@ -189,10 +191,12 @@ async def comment_callback(callback_query: CallbackQuery, bot: Bot, state: FSMCo
 @add_router.message(AddNote.comment)
 async def comment_callback(message: Message, state: FSMContext):
     fsm_data = await state.get_data()
-    await add_comment(cat_type=fsm_data['cat_type'], prod_id=fsm_data['prod_id'], comment=message.text)
     amount = fsm_data['amount']
     cat_name = fsm_data['cat_name']
     date = fsm_data['date']
+    cat_type = fsm_data['cat_type']
+    prod_id = fsm_data['prod_id']
+    await add_comment(cat_type=cat_type, prod_id=prod_id, comment=message.text)
 
     text = f'Добавлено {amount} ₽ в категорию расходов "{cat_name}".\n{date}\n "_{message.text}_"'
     await message.answer(text=text, reply_markup=await get_note_kb(), parse_mode='Markdown')

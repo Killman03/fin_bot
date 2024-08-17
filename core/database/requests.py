@@ -31,9 +31,36 @@ async def get_cat_info(cat_type: int, cat_id: int):
     async with async_session() as session:
         if cat_type == 1:
             table = IncCategory
+            table_2 = Income
         else:
             table = ExpCategory
-        return await session.scalar(select(table).where(table.id == cat_id))
+            table_2 = Expense
+
+        query = select(table).where(table.id == cat_id)
+        name = await session.execute(query)
+        await session.commit()
+
+        # Total amount for all time
+        total_all_time = await session.scalar(
+            select(func.sum(cast(table_2.amount, DECIMAL)))
+            .where(table_2.category_id == cat_id)
+        )
+
+        # Total amount for last month
+        total_last_month = await session.scalar(
+            select(func.sum(cast(table_2.amount, DECIMAL)))
+            .where(Expense.category_id == 3)
+            .where(func.date_trunc('month', table_2.created) == func.date_trunc('month', func.current_date()))
+        )
+
+        name = await session.scalar(select(table).where(table.id == cat_id))
+        cat_info_dict = {
+            'cat_info': name,
+            'cat_month': total_last_month,
+            'cat_year': total_all_time
+            }
+
+        return cat_info_dict
 
 
 async def delete_cat(cat_id: int, cat_type: int):

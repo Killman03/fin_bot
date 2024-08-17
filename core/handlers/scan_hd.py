@@ -80,7 +80,7 @@ async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
     prod_list = products['data']['json']['items']
     try:
         for _ in range(len(list(prod_list))):
-            if count != len(list(prod_list)):
+            if count != len(list(prod_list))-1:
                 d = prod_list[count]
                 price = d['sum'] / 100
                 name = d['name']

@@ -4,7 +4,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import StateFilter
 
-import keyboards.keyboards as kb
+from keyboards.keyboards import get_start_kb, get_callback_btns, get_cat_list
 from database.requests import (
     get_cat_info,
     delete_cat,
@@ -31,7 +31,7 @@ async def settings(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
     if await state.get_state() is not None:
         await state.clear()
     await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text='⚙️ Выберите раздел для настройки:',
-                                reply_markup=kb.get_callback_btns(btns={'📈 Доходы': 'conf_inc', '📉 Расходы': 'conf_exp', '🔙 Назад': 'start'}))
+                                reply_markup=get_callback_btns(btns={'📈 Доходы': 'conf_inc', '📉 Расходы': 'conf_exp', '🔙 Назад': 'start'}))
 
 
 @cat_router.callback_query(F.data.startswith('conf_'))
@@ -42,7 +42,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot):
     elif callback_query.data.startswith('conf_exp'):
         cat_type = 2
 
-    keyboard = await kb.get_cat_list(table_num=cat_type)
+    keyboard = await get_cat_list(table_num=cat_type)
 
     text = 'Выберите источник доходов 📈' if cat_type == 1 else 'Выберите категорию расходов 📉'
 
@@ -56,25 +56,40 @@ async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot, state
     cat_type = 1 if callback_query.data.startswith('inc_') else 2
 
     btns = {
-        '✏️Переименовать': f'rename_{cat_type}_{cat_id}',
-        'Удалить': f'delete_{cat_type}_{cat_id}',
-        'Удалить': f'delete_{cat_type}_{cat_id}',
-        '⬆️Поднять в списке': f'up_{cat_type}_{cat_id}',
-        '⬇️Опустить в списке': f'down_{cat_type}_{cat_id}',
-        '🔙Назад': 'conf_inc' if cat_type == 1 else 'conf_exp'
+        '✏️ Переименовать': f'rename_{cat_type}_{cat_id}',
+        '🗑 Удалить': f'delete_{cat_type}_{cat_id}',
+        '🔙 Назад': 'conf_inc' if cat_type == 1 else 'conf_exp'
     }
 
-    cat = await get_cat_info(cat_type, cat_id)
+    cat_info_dict = await get_cat_info(cat_type, cat_id)
 
-    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text=f'Выбрана категория: {cat.name}\nПлановая сумма: {cat.plan}',
-                                reply_markup=kb.get_callback_btns(btns=btns))
+    plan = cat_info_dict['cat_info'].plan
+    name = cat_info_dict['cat_info'].name
+    total_month = cat_info_dict['cat_month']
+    total_year = cat_info_dict['cat_year']
+
+    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
+                                text=f'Выбрана категория: {name}\nПлановая сумма: {plan}\n'
+                                     f'Всего за месяц: {total_month}\nЗа всё время: {total_year}\n'
+                                     f'<i>Если вы удалите категорию, удаляться все привязанные к ней записи</i>',
+                                reply_markup=get_callback_btns(btns=btns))
+
+########################### Deleting category #################################
 
 
 @cat_router.callback_query(F.data.startswith('delete_'))
 async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot):
     cat_type, cat_id = map(int, callback_query.data.split('_')[1:])
     await delete_cat(cat_id, cat_type)
-    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text='Категория удалена')
+    await callback_query.answer("Категория успешно удалена", show_alert=True)
+
+    text = (
+        f'Привет, {callback_query.message.from_user.first_name}! 👋 Для того, чтобы добавить источник доходов или расходов, '
+        f'перейди в настройки ⚙️. Затем для добавления дохода или расхода введите число или математическое выражение, например, 26*4 или 236+189.\n'
+        f'Для более подробной информации жми кнопку ℹ️Информация.\n'
+        f'Давай вместе придем к финансовой независимости! 💰💼')
+
+    await callback_query.message.edit_text(text=text, reply_markup=await get_start_kb())
 
 
 ################################## FSM for changing category name ##################################
@@ -96,7 +111,16 @@ async def change_inc_name(message: Message, state: FSMContext):
     data = await state.get_data()
     await change_cat_name(data['cat_id'], data['cat_type'], message.text)
     await state.clear()
+
+    text = (f'Привет, {message.from_user.first_name}! 👋 Для того, чтобы добавить источник доходов или расходов, '
+            f'перейди в настройки ⚙️. Затем для добавления дохода или расхода введите число или математическое выражение, например, 26*4 или 236+189.\n'
+            f'Для более подробной информации жми кнопку ℹ️Информация.\n'
+            f'Давай вместе придем к финансовой независимости! 💰💼')
+
+    kbrd = await get_start_kb()
+
     await message.answer('Название изменено')
+    await message.answer(text=text, reply_markup=kbrd)
 
 
 ########################### FSM for adding new category ###########################
@@ -106,10 +130,11 @@ async def change_inc_name(message: Message, state: FSMContext):
 async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMContext):
     cat_type = 1 if callback_query.data == 'add_cat_inc' else 2
 
-    text = 'Введите название новой категории доходов 📈' if cat_type == 1 else 'Введите название новой категории расходов 📉'
+    text = 'Введите название новой категории доходов 📈\nЛучше к названием добавлять смайлики. Так веселее и прикольнее.🙃' \
+    if cat_type == 1 else 'Введите название новой категории расходов 📉\nЛучше к названием добавлять смайлики. Так веселее и прикольнее.🙂'
 
     await callback_query.answer()
-    await callback_query.message.answer(text=text, reply_markup=kb.get_callback_btns(btns={'🚫 Cancel': 'settings'}))
+    await callback_query.message.answer(text=text, reply_markup=get_callback_btns(btns={'🚫 Cancel': 'settings'}))
     await state.update_data(cat_type=cat_type)
     await state.set_state(AddCategoryState.add_name)
 
@@ -118,7 +143,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, state: FSMConte
 async def add_cat_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(AddCategoryState.add_plan)
-    await message.answer('Введите плановую сумму', reply_markup=kb.get_callback_btns(btns={'🚫 Cancel': 'settings'}))
+    await message.answer('Введите плановую сумму', reply_markup=get_callback_btns(btns={'🚫 Cancel': 'settings'}))
 
 
 @cat_router.message(AddCategoryState.add_plan)
@@ -126,5 +151,5 @@ async def add_cat_plan(message: Message, state: FSMContext):
     data = await state.get_data()
     await add_cat(data['cat_type'], data['name'], int(message.text))
     await state.clear()
-    await (message.answer('Категория добавлена', reply_markup=kb.get_callback_btns(btns={'🔙 Назад': 'settings',
+    await (message.answer('Категория добавлена', reply_markup=get_callback_btns(btns={'🔙 Назад': 'settings',
                                                                                         'Главное меню': 'start'})))

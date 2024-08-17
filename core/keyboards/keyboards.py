@@ -73,10 +73,10 @@ async def get_start_kb():
     current_date = datetime.datetime.now().strftime('%B %Y')
 
     btns = {
-        'Отчет': f'report_prev_{current_date}_1',
-        'Настройки': 'settings',
-        'Excel': 'excel',
-        'Информация': 'info',
+        '🧮Отчет': f'report_prev_{current_date}_1',
+        '⚙️Настройки': 'settings',
+        '👨‍🏫Excel': 'excel',
+        '️️ℹ️Информация': 'info',
     }
 
     return get_callback_btns(btns=btns)
