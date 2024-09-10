@@ -4,13 +4,13 @@ from database.requests import get_note_info, get_all_notes
 
 
 # Определение функции для экспорта данных в XLSX
-async def export_to_xlsx():
+async def export_to_xlsx(user_id: int):
     global name
     wb = Workbook()
     COLUMN_NAMES = ["№", "Сумма", "Примичание", "Дата"]
 
     for table_num in [1, 2]:
-        items = await get_all_notes(table_num)
+        items = await get_all_notes(table_num, user_id)
         for item in items:
             count = 0
             note_info = await get_note_info(table_num, item.id)

@@ -14,8 +14,8 @@ def get_callback_btns(*, btns: dict[str, str], size: tuple[int] = (2, )):
     return keyboard.adjust(*size).as_markup()
 
 
-async def get_cat_list(table_num: int):
-    items = await get_all_notes(table_num=table_num)
+async def get_cat_list(table_num: int, user_id: int):
+    items = await get_all_notes(table_num=table_num, user_id=user_id)
     keyboard = InlineKeyboardBuilder()
     callback_prefix = 'inc' if table_num == 1 else 'exp'
     add_cat = 'add_cat_inc' if table_num == 1 else 'add_cat_exp'
@@ -28,8 +28,8 @@ async def get_cat_list(table_num: int):
     return keyboard.adjust(1).as_markup()
 
 
-async def get_add_note_kb(table_num: int = 2):
-    items = await get_all_notes(table_num)
+async def get_add_note_kb(user_id: int, table_num: int = 2):
+    items = await get_all_notes(table_num, user_id=user_id)
     keyboard = InlineKeyboardBuilder()
     callback_prefix = 'add_inc' if table_num == 1 else 'add_exp'
     to_anthr = 'to_inc' if table_num == 2 else 'to_exp'
@@ -57,8 +57,8 @@ async def get_note_kb():
     return get_callback_btns(btns=btns)
 
 
-async def get_scan_kb():
-    items = await get_all_notes(table_num=2)
+async def get_scan_kb(user_id: int):
+    items = await get_all_notes(user_id=user_id, table_num=2)
     keyboard = InlineKeyboardBuilder()
     callback_prefix = 'qr'
     for item in items:

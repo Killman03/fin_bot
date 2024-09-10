@@ -16,7 +16,7 @@ from handlers import router as main_router
 
 async def on_startup(bot: Bot):
     await set_commands(bot)
-    #await drop_db()
+#    await drop_db()
     await create_db()
     await bot.send_message(os.getenv('ADMIN_ID'), text='Bot is running')
 

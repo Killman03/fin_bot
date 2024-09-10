@@ -39,9 +39,10 @@ async def handle_receipt(message: Message, bot: Bot, state: FSMContext):
         dt = datetime.strptime(qr_time[:-2], "%Y%m%dT%H%M")
         count = 1
         await state.update_data(products=products, datetime=dt)
+        user_id = message.from_user
 
         for item in products['data']['json']['items']:
-            kbrd = await get_scan_kb()
+            kbrd = await get_scan_kb(user_id=user_id.id)
             price = str(item['sum'] / 100)
             name = item['name']
 
@@ -68,6 +69,7 @@ async def handle_receipt(message: Message, bot: Bot, state: FSMContext):
 @scan_router.message(ScanState.wait_category)
 @scan_router.callback_query(F.data.startswith('qr_'))
 async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user
     cat_id = callback_query.data.split('_')[-1]
 
     data = await state.get_data()
@@ -80,7 +82,7 @@ async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
     prod_list = products['data']['json']['items']
     try:
         for _ in range(len(list(prod_list))):
-            if count != len(list(prod_list))-1:
+            if count != len(list(prod_list)):
                 d = prod_list[count]
                 price = d['sum'] / 100
                 name = d['name']
@@ -94,7 +96,7 @@ async def add_qr_callback(callback_query: CallbackQuery, state: FSMContext):
 
                 else:
                     count += 1
-                    kbrd = await get_scan_kb()
+                    kbrd = await get_scan_kb(user_id=user_id.id)
                     await state.update_data(count=count, amount=price, name=name)
                     await callback_query.bot.edit_message_text(chat_id=callback_query.from_user.id,
                                                 message_id=callback_query.message.message_id,

@@ -47,7 +47,8 @@ async def delete_info(callback_query: CallbackQuery, bot: Bot):
 
 @my_router.callback_query(F.data == 'excel')
 async def send_xl(callback_query: CallbackQuery):
-    await export_to_xlsx()
+    user_id = callback_query.from_user
+    await export_to_xlsx(user_id=user_id.id)
     file_path = 'documents/budget.xlsx'
     await callback_query.message.reply_document(document=FSInputFile(path=file_path))
     os.remove('documents/budget.xlsx')

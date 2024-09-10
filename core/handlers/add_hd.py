@@ -30,9 +30,10 @@ locale.setlocale(
 
 @add_router.message(NoLettersFilter())
 async def arif_hd_message(message: Message, bot: Bot, state: FSMContext):
+    user_id = message.from_user
     table_num = 1 if message.text == 'to_inc' else 2
     msg = await resolve(message.text)
-    kbrd = await get_add_note_kb(table_num=table_num)
+    kbrd = await get_add_note_kb(table_num=table_num, user_id=user_id.id)
     await state.update_data(amount=msg)
     await bot.send_message(chat_id=message.from_user.id, text=f'❔ В какую категорию добавить {msg} ₽?',
                            reply_markup=kbrd)
@@ -40,8 +41,9 @@ async def arif_hd_message(message: Message, bot: Bot, state: FSMContext):
 
 @add_router.callback_query(F.data.in_(['to_inc', 'to_exp']))
 async def arif_hd_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+    user_id = callback_query.from_user
     table_num = 1 if callback_query.data == 'to_inc' else 2
-    kbrd = await get_add_note_kb(table_num=table_num)
+    kbrd = await get_add_note_kb(table_num=table_num, user_id=user_id.id)
     data = await state.get_data()
     msg = data['amount']
     await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
@@ -52,7 +54,7 @@ async def arif_hd_callback(callback_query: CallbackQuery, bot: Bot, state: FSMCo
 
 
 @add_router.callback_query(StateFilter(None), F.data.startswith('add_exp') | F.data.startswith('add_inc'))
-async def add_note_callback(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
+async def add_note_callback(callback_query: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
     amount = data['amount']
@@ -62,17 +64,19 @@ async def add_note_callback(callback_query: CallbackQuery, bot: Bot, state: FSMC
         cat_name = await get_cat_info(cat_id=int(callback_query.data.split('_')[2]), cat_type=1)
         prod_id = await add_note(cat_type=1, cat_id=cat_id, amount=int(amount), description='')
         date = await get_created_date(cat_type=1, prod_id=prod_id)
-        await state.update_data(prod_id=prod_id, date=date, cat_type=1, cat_name=cat_name.name)
+        name = cat_name['cat_info'].name
+        await state.update_data(prod_id=prod_id, date=date, cat_type=1, cat_name=name)
 
     else:
         cat_name = await get_cat_info(cat_id=int(callback_query.data.split('_')[2]), cat_type=2)
         prod_id = await add_note(cat_type=2, cat_id=cat_id, amount=int(amount), description='')
         date = await get_created_date(cat_type=2, prod_id=prod_id)
-        await state.update_data(prod_id=prod_id, date=date, cat_type=2, cat_name=cat_name.name)
+        name = cat_name['cat_info'].name
+        await state.update_data(prod_id=prod_id, date=date, cat_type=2, cat_name=name)
 
-    text = f'Добавлено {amount} ₽ в категорию расходов "{cat_name.name}".\n{date}'
+    text = f'Добавлено {amount} ₽ в категорию расходов "{name}".\n{date}'
 
-    await bot.edit_message_text(text=text, chat_id=callback_query.from_user.id,
+    await callback_query.bot.edit_message_text(text=text, chat_id=callback_query.from_user.id,
                                 message_id=callback_query.message.message_id,
                                 reply_markup=await get_note_kb())
 

@@ -35,18 +35,19 @@ async def settings(callback_query: CallbackQuery, bot: Bot, state: FSMContext):
 
 
 @cat_router.callback_query(F.data.startswith('conf_'))
-async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot):
+async def callback_query_keyboard(callback_query: CallbackQuery):
+    user_id = callback_query.from_user
 
     if callback_query.data.startswith('conf_inc'):
         cat_type = 1
     elif callback_query.data.startswith('conf_exp'):
         cat_type = 2
 
-    keyboard = await get_cat_list(table_num=cat_type)
+    keyboard = await get_cat_list(table_num=cat_type, user_id=user_id.id)
 
     text = 'Выберите источник доходов 📈' if cat_type == 1 else 'Выберите категорию расходов 📉'
 
-    await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text=text, reply_markup=keyboard)
+    await callback_query.bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id, text=text, reply_markup=keyboard)
 
 
 @cat_router.callback_query(F.data.startswith('inc_') | F.data.startswith('exp_'))
@@ -78,7 +79,7 @@ async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot, state
 
 
 @cat_router.callback_query(F.data.startswith('delete_'))
-async def callback_query_keyboard(callback_query: CallbackQuery, bot: Bot):
+async def callback_query_keyboard(callback_query: CallbackQuery):
     cat_type, cat_id = map(int, callback_query.data.split('_')[1:])
     await delete_cat(cat_id, cat_type)
     await callback_query.answer("Категория успешно удалена", show_alert=True)
@@ -148,8 +149,9 @@ async def add_cat_name(message: Message, state: FSMContext):
 
 @cat_router.message(AddCategoryState.add_plan)
 async def add_cat_plan(message: Message, state: FSMContext):
+    user = message.from_user
     data = await state.get_data()
-    await add_cat(data['cat_type'], data['name'], int(message.text))
+    await add_cat(data['cat_type'], data['name'], int(message.text), user_id=user.id)
     await state.clear()
     await (message.answer('Категория добавлена', reply_markup=get_callback_btns(btns={'🔙 Назад': 'settings',
                                                                                         'Главное меню': 'start'})))

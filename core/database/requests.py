@@ -1,6 +1,7 @@
 import datetime
 
 from sqlalchemy import select, update, delete, func, cast, DECIMAL, exists
+from sqlalchemy.orm import aliased
 
 from .models import User, ExpCategory, IncCategory, Expense, Income
 from .engine import async_session
@@ -18,13 +19,13 @@ async def set_user(tg_id, user_name):
 
 ########################### WORKING WITH CATEGORY ##############################
 
-async def get_all_notes(table_num: int):
+async def get_all_notes(table_num: int, user_id: int):
     if table_num == 1:
         table = IncCategory
     elif table_num == 2:
         table = ExpCategory
     async with async_session() as session:
-        return await session.scalars(select(table))
+        return await session.scalars(select(table).where(table.user_id == user_id))
 
 
 async def get_cat_info(cat_type: int, cat_id: int):
@@ -74,13 +75,13 @@ async def delete_cat(cat_id: int, cat_type: int):
         await session.commit()
 
 
-async def add_cat(cat_type: int, name: str, plan: int):
+async def add_cat(cat_type: int, name: str, plan: int, user_id: int):
     async with async_session() as session:
         if cat_type == 1:
             table = IncCategory
         else:
             table = ExpCategory
-        session.add(table(name=name, plan=plan))
+        session.add(table(name=name, plan=plan, user_id=user_id))
         await session.commit()
 
 
@@ -110,6 +111,7 @@ async def add_note(cat_type: int, cat_id: int, amount: str, description: str, cr
 
         prod_id = table(amount=str(amount), description=description, category_id=cat_id)
         session.add(prod_id)
+
         await session.commit()
         return prod_id.id
 
@@ -160,33 +162,36 @@ async def add_comment(cat_type: int, prod_id: int, comment: str):
         await session.commit()
 
 
-async def get_monthly_report():
+async def get_monthly_report(user_id: int):
     # Открываем асинхронную сессию с базой данных
     async with async_session() as session:
+
         # Запрос для получения доходов, сгруппированных по месяцам
-        income_query = (
-            select(
-                func.date_trunc('month', Income.created).label('month'),
-                func.sum(cast(Income.amount, DECIMAL)).label('total_income')
-            )
-            .group_by('month')
-        )
-
-        # Запрос для получения расходов, сгруппированных по месяцам
-        expense_query = (
-            select(
-                func.date_trunc('month', Expense.created).label('month'),
-                func.sum(cast(Expense.amount, DECIMAL)).label('total_expense')
-            )
-            .group_by('month')
-        )
-
-        # Выполняем запросы и получаем результаты
-        income_results = await session.execute(income_query)
-        expense_results = await session.execute(expense_query)
+        for i in [Income, Expense]:
+            if i == Income:
+                category_alias = aliased(IncCategory)
+            else:
+                category_alias = aliased(ExpCategory)
+            query = (
+                select(
+                    func.date_trunc('month', i.created).label('month'),
+                    func.sum(cast(i.amount, DECIMAL)).label(f'total_{'income' if i==Income else 'expense'}')
+                ).join(
+                    category_alias, i.category_id == category_alias.id
+                ).filter(
+                    category_alias.user_id == user_id
+                ).group_by(
+                    i.created,
+                    func.date_trunc('month', i.created)
+            ))
+            if i == Income:
+                income_results = await session.execute(query)
+            else:
+                expense_results = await session.execute(query)
 
         income_data = {row.month.strftime("%B %Y"): row.total_income for row in income_results}
         expense_data = {row.month.strftime("%B %Y"): row.total_expense for row in expense_results}
+
 
         # Формируем отчет, объединяя данные о доходах и расходах
         report = {}
@@ -230,3 +235,7 @@ async def check_description_exists(description):
         if note:
             return note.category_id
         return False
+
+async def get_balance(user_id: int):
+    async with async_session() as session:
+        pass
